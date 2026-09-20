@@ -1,0 +1,14 @@
+{
+  "features": {
+    "ghcr.io/kingbain/devcontainer-features-databricks/databricks-cli:0": {
+      "version": "0.0.1",
+      "resolved": "ghcr.io/kingbain/devcontainer-features-databricks/databricks-cli@sha256:9880aa4a5495dc0fb031c2728598e46154ed7fa5d49dbbd41ee8010a583d9840",
+      "integrity": "sha256:9880aa4a5495dc0fb031c2728598e46154ed7fa5d49dbbd41ee8010a583d9840"
+    },
+    "ghcr.io/postfinance/devcontainer-features/terraform:1": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/postfinance/devcontainer-features/terraform@sha256:c571bdef29c96ef732776328977354d7ff7fe3cd8cd59966190aae8078f9610e",
+      "integrity": "sha256:c571bdef29c96ef732776328977354d7ff7fe3cd8cd59966190aae8078f9610e"
+    }
+  }
+}

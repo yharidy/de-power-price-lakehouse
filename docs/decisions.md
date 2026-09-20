@@ -1,0 +1,3 @@
+## Design decisions
+1. Terraform state files are stored locally and not checked in as they might contain sensitive information. Storing the state remotely is out of scope of this project.
+2. Terraform is only run manually and locally. Integrating it into Github Actions would require storing the state remotely and provisioning Service Principals with broad access rights. This is limited by Databricks' free tier and is not the focus of this project.
