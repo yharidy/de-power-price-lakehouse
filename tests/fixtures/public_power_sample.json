@@ -1,0 +1,158 @@
+{
+    "schema_version": "2.0",
+    "endpoint": "public_power",
+    "country": "de",
+    "bidding_zone": null,
+    "timezone": "Europe/Berlin",
+    "resolution": "PT15M",
+    "interval_minutes": 15,
+    "unit": "MW",
+    "generated_at": "2026-09-23T18:51:48+02:00",
+    "available_from": "2026-09-22T18:30:00+02:00",
+    "available_until": "2026-09-22T18:45:00+02:00",
+    "series": [
+        {
+            "id": "hydro_pumped_storage_consumption",
+            "name": "Hydro pumped storage consumption"
+        },
+        {
+            "id": "cross_border_electricity_trading",
+            "name": "Cross border electricity trading"
+        },
+        {
+            "id": "hydro_run_of_river",
+            "name": "Hydro Run-of-River"
+        },
+        {
+            "id": "biomass",
+            "name": "Biomass"
+        },
+        {
+            "id": "fossil_brown_coal_lignite",
+            "name": "Fossil brown coal / lignite"
+        },
+        {
+            "id": "fossil_hard_coal",
+            "name": "Fossil hard coal"
+        },
+        {
+            "id": "fossil_oil",
+            "name": "Fossil oil"
+        },
+        {
+            "id": "fossil_coal_derived_gas",
+            "name": "Fossil coal-derived gas"
+        },
+        {
+            "id": "fossil_gas",
+            "name": "Fossil gas"
+        },
+        {
+            "id": "geothermal",
+            "name": "Geothermal"
+        },
+        {
+            "id": "hydro_water_reservoir",
+            "name": "Hydro water reservoir"
+        },
+        {
+            "id": "hydro_pumped_storage",
+            "name": "Hydro pumped storage"
+        },
+        {
+            "id": "others",
+            "name": "Others"
+        },
+        {
+            "id": "waste",
+            "name": "Waste"
+        },
+        {
+            "id": "wind_offshore",
+            "name": "Wind offshore"
+        },
+        {
+            "id": "wind_onshore",
+            "name": "Wind onshore"
+        },
+        {
+            "id": "solar",
+            "name": "Solar"
+        },
+        {
+            "id": "load",
+            "name": "Load"
+        },
+        {
+            "id": "residual_load",
+            "name": "Residual load"
+        },
+        {
+            "id": "renewable_share_of_load",
+            "name": "Renewable share of load",
+            "unit": "%"
+        },
+        {
+            "id": "renewable_share_of_generation",
+            "name": "Renewable share of generation",
+            "unit": "%"
+        }
+    ],
+    "data": [
+        {
+            "timestamp": "2026-09-22T18:30:00+02:00",
+            "values": {
+                "hydro_pumped_storage_consumption": -5.0,
+                "cross_border_electricity_trading": 9030.9,
+                "hydro_run_of_river": 1330.2,
+                "biomass": 3970.2,
+                "fossil_brown_coal_lignite": 12843.1,
+                "fossil_hard_coal": 5408.3,
+                "fossil_oil": 296.8,
+                "fossil_coal_derived_gas": 517.2,
+                "fossil_gas": 8998.6,
+                "geothermal": 13.2,
+                "hydro_water_reservoir": 672.3,
+                "hydro_pumped_storage": 5184.4,
+                "others": 213.0,
+                "waste": 1321.0,
+                "wind_offshore": 196.8,
+                "wind_onshore": 2047.3,
+                "solar": 2841.5,
+                "load": 57843.0,
+                "residual_load": 52757.4,
+                "renewable_share_of_load": 20.2,
+                "renewable_share_of_generation": 28.8
+            }
+        },
+        {
+            "timestamp": "2026-09-22T18:45:00+02:00",
+            "values": {
+                "hydro_pumped_storage_consumption": -3.1,
+                "cross_border_electricity_trading": 9607.1,
+                "hydro_run_of_river": 1320.9,
+                "biomass": 3963.7,
+                "fossil_brown_coal_lignite": 12868.5,
+                "fossil_hard_coal": 5410.9,
+                "fossil_oil": 296.3,
+                "fossil_coal_derived_gas": 512.0,
+                "fossil_gas": 9051.3,
+                "geothermal": 13.2,
+                "hydro_water_reservoir": 607.5,
+                "hydro_pumped_storage": 5303.1,
+                "others": 213.2,
+                "waste": 1325.3,
+                "wind_offshore": 191.9,
+                "wind_onshore": 2110.3,
+                "solar": 1223.3,
+                "load": 57165.5,
+                "residual_load": 53639.9,
+                "renewable_share_of_load": 17.6,
+                "renewable_share_of_generation": 25.7
+            }
+        }
+    ],
+    "attributes": {},
+    "license": "CC BY 4.0 (creativecommons.org/licenses/by/4.0), attribution: energy-charts.info",
+    "deprecated": false
+}
