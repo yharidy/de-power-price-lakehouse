@@ -2,7 +2,7 @@ name: Tests
 on:
   push:
 
-job:
+jobs:
   pytest:
     runs-on: ubuntu-latest
 
