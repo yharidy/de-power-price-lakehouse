@@ -9,7 +9,6 @@ Usage:
         --end 2026-01-16 --target-path /Volumes/catalog/schema/landing
 """
 
-import json
 import logging
 from argparse import ArgumentParser
 from datetime import datetime
