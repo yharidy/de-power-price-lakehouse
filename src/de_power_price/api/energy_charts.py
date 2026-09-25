@@ -11,10 +11,15 @@ Usage:
 
 import logging
 from argparse import ArgumentParser
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
-from common import fetch, parse_timestamp_string, write_json
+from .common import (
+    fetch,
+    get_previous_day_range,
+    parse_timestamp_string,
+    write_json,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -76,7 +81,7 @@ def check_license_field(response: dict) -> None:
         raise RuntimeError(f"Unknown license: {license_info}")
 
 
-def main(endpoint: str, start: str, end: str, target_path: str) -> None:
+def main(endpoint: str, start: str | datetime, end: str | datetime, target_path: str) -> None:
     """Fetch one Energy-Charts endpoint for a time range and write it to disk.
 
     The output filename is derived from the requested start/end *dates*
@@ -93,11 +98,16 @@ def main(endpoint: str, start: str, end: str, target_path: str) -> None:
         raise ValueError("Target path must be a directory.")
     target_dir.mkdir(exist_ok=True, parents=True)
 
-    start_dt = parse_timestamp_string(start)
-    end_dt = parse_timestamp_string(end)
+    if isinstance(start, str):
+        start: datetime = parse_timestamp_string(start)
+    if isinstance(end, str):
+        end: datetime = parse_timestamp_string(end)
+
+    if start.tzinfo != UTC or end.tzinfo != UTC:
+        raise ValueError("Start/end timestamps are not in UTC.")
 
     url = build_url(endpoint)
-    params = build_params(endpoint, start_dt, end_dt)
+    params = build_params(endpoint, start, end)
 
     response_dict = fetch(url, params)
     check_license_field(response_dict)
@@ -105,25 +115,33 @@ def main(endpoint: str, start: str, end: str, target_path: str) -> None:
     if response_dict.get("deprecated") is True:
         logger.warning("API endpoint %s is deprecated!", url)
 
-    filename = f"{endpoint}_{start_dt.date()}_{end_dt.date()}.json"
+    filename = f"{endpoint}_{start.date()}_{end.date()}.json"
     write_json(response_dict, target_dir, filename)
 
 
-if __name__ == "__main__":
+def cli():
     parser = ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--previous-day",
+        action='store_true',
+        help=(
+            "Set start time to the previous day at 00:00, end at 23:59."
+            "Overwrites values passed to --start and --end"
+        ),
+    )
     parser.add_argument(
         "--endpoint", required=True,
         help="API endpoint to call (price or public_power)",
     )
     parser.add_argument(
-        "--start", required=True,
+        "--start",
         help=(
             "Start time to request in UTC (unix timestamp or ISO-format "
             "date-time string, e.g. 2026-02-12T10:52:59Z)"
         ),
     )
     parser.add_argument(
-        "--end", required=True,
+        "--end",
         help=(
             "End time to request in UTC (unix timestamp or ISO-format "
             "date-time string, e.g. 2026-02-12T10:52:59Z)"
@@ -135,9 +153,23 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if not args.previous_day and not (args.start and args.end):
+        raise ValueError(
+            "--previous-day must be set or a start and end timestmaps must be provided")
+    if args.previous_day:
+        start, end = get_previous_day_range()
+        logger.info(
+            f"Resolved timestamp pounds for previous day: start={start.isoformat()}, end={end.isoformat()} ")
+    else:
+        start, end = args.start, args.end
     main(
         endpoint=args.endpoint,
-        start=args.start,
-        end=args.end,
+        start=start,
+        end=end,
         target_path=args.target_path,
     )
+
+
+if __name__ == "__main__":
+    cli()

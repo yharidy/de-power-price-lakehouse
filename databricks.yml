@@ -1,0 +1,26 @@
+bundle: 
+  name: de-power-price-lakehouse
+
+include:
+  - resources/*.yml
+  - variables.yml
+
+artifacts:
+  default:
+    type: whl
+    build: uv build --wheel
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace: 
+      host: "https://dbc-13aaaa5e-3113.cloud.databricks.com/"
+  prod:
+    mode: production
+    variables:
+      bronze_schema: prod_bronze
+      silver_schema: prod_silver
+      gold_schema: prod_gold
+
+    workspace:
+      host: ${var.workspace}

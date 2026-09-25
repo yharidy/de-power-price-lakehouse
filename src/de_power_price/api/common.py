@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -29,6 +29,21 @@ def wait_for_retry(retry_state):
     if isinstance(exception, RateLimitError):
         return exception.retry_after
     return wait_random_exponential(multiplier=1, max=30)(retry_state)
+
+
+def get_previous_day_range() -> tuple[datetime, datetime]:
+    today = datetime.now(UTC).date()
+    previous_day = today - timedelta(days=1)
+
+    start = datetime.combine(
+        previous_day,
+        datetime.min.time(),
+        tzinfo=UTC,
+    )
+
+    end = start + timedelta(days=1)
+
+    return start, end
 
 
 def parse_timestamp_string(timestamp_str: str) -> datetime:

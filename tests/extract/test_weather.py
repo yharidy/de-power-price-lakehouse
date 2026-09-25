@@ -3,7 +3,8 @@
 from unittest.mock import Mock
 
 import pytest
-import weather
+
+from de_power_price.api import weather
 
 
 class TestMain:

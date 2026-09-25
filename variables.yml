@@ -1,0 +1,16 @@
+variables:
+  catalog:
+    description: Name of the catalog
+    default: de_power_price
+
+  bronze_schema: 
+    description: Name of the bronze schema
+    default: dev_bronze
+
+  silver_schema: 
+    description: Name of the silver schema
+    default: dev_silver
+
+  gold_schema: 
+    description: Name of the gold schema
+    default: dev_gold

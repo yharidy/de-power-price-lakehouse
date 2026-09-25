@@ -4,9 +4,10 @@ import json
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-import common
 import pytest
 import requests
+
+from de_power_price.api import common
 
 # ---------------------------------------------------------------------------
 # parse_timestamp_string

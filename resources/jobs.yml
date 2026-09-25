@@ -1,0 +1,49 @@
+resources:
+  jobs:
+    daily_api_ingestion:
+      name: de-power-price-daily-ingestion
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"
+        timezone_id: "Europe/Berlin"
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: energy_charts_price
+          environment_key: default
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+            - "--endpoint"
+            - "price"
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/price"
+        - task_key: energy_charts_public_power
+          environment_key: default
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+            - "--endpoint"
+            - "public_power"
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/public_power"
+        - task_key: weather
+          environment_key: default
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: weather_api
+            parameters:
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/weather"
+

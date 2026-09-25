@@ -5,9 +5,9 @@ saved API responses, in place of hand-typed fixtures.
 import json
 from pathlib import Path
 
-import common
-import energy_charts
 import pytest
+
+from de_power_price.api import common, energy_charts
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
