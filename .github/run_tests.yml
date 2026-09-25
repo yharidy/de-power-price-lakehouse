@@ -13,9 +13,6 @@ job:
       - name: install uv
         uses: astral-sh/setup-uv@v6
       
-      - name: set up python
-        run: uv python install 3.14
-
       - name: install dependencies
         run: uv sync
       
