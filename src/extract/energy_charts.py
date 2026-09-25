@@ -1,10 +1,31 @@
 import requests
 from datetime import datetime, timezone
 from argparse import ArgumentParser
-from logging import getLogger
+import logging
 from pathlib import Path
 import json
-logger = getLogger(__name__)
+from tenacity import retry, wait_random_exponential, retry_if_exception_type, stop_after_attempt
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+
+class RateLimitError(Exception):
+    def __init__(self, retry_after: int):
+        self.retry_after = retry_after
+        super().__init__(f"Rate limited, retry after {retry_after}s")
+
+
+def wait_for_retry(retry_state):
+    exception = retry_state.outcome.exception()
+
+    if isinstance(exception, RateLimitError):
+        return exception.retry_after
+
+    return wait_random_exponential(
+        multiplier=1,
+        max=30,
+    )(retry_state)
 
 
 def parse_timestamp_string(timestamp_str: str) -> datetime:
@@ -52,9 +73,43 @@ def build_params(endpoint: str, start: datetime, end: datetime):
 
 
 def check_license_field(response: dict):
-    license = response.get("license_info") or response.get("license")
-    if not license.startswith("CC BY 4.0 (creativecommons.org/licenses/by/4.0)"):
-        raise RuntimeError(f"Unknown license: {license}")
+    license_info = response.get("license_info") or response.get("license")
+    if license_info and not license_info.startswith("CC BY 4.0 (creativecommons.org/licenses/by/4.0)"):
+        raise RuntimeError(f"Unknown license: {license_info}")
+
+
+@retry(
+    retry=retry_if_exception_type(
+        (
+            RateLimitError,
+            requests.Timeout,
+            requests.ConnectionError,
+        )
+    ),
+    wait=wait_for_retry,
+    stop=stop_after_attempt(5),
+    reraise=True,
+)
+def fetch(url, params, timeout: int = 30) -> dict:
+    response = requests.get(
+        url,
+        params=params,
+        timeout=timeout,
+    )
+
+    if response.status_code == 429:
+        retry_after = int(
+            response.headers.get("Retry-After", 30)
+        )
+        logger.warning(
+            "Rate limited, waiting %ss",
+            retry_after,
+        )
+        raise RateLimitError(retry_after)
+
+    response.raise_for_status()
+
+    return response.json()
 
 
 def main(endpoint: str, start: str, end: str, target_path):
@@ -66,13 +121,15 @@ def main(endpoint: str, start: str, end: str, target_path):
     end_dt = parse_timestamp_string(end)
     url = build_url(endpoint)
     params = build_params(endpoint, start_dt, end_dt)
-    response = requests.get(url, params)
-    response_dict = response.json()
+    response_dict = fetch(url, params)
     check_license_field(response_dict)
     if response_dict.get("deprecated") is True:
         logger.warning(f"API endpoint {url} is deprecated!")
-    filename = f"{endpoint}_{start_dt.isoformat()}_{end_dt.isoformat()}.json"
-    with (target_path / filename).open(mode="w") as f:
+    filename = f"{endpoint}_{start_dt.date()}_{end_dt.date()}.json"
+    target_file = target_path / filename
+    if target_file.exists():
+        logger.warning("Target file already exists! Overwriting...")
+    with target_file.open(mode="w") as f:
         json.dump(response_dict, f)
 
 
