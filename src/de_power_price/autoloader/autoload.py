@@ -10,9 +10,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 def run_autoloader(spark: SparkSession, source_path: Path, checkpoint_root: Path, target_table: str, schema_hints: str | None = None):
-    # enable Change Data Feed
-    spark.conf.set(
-        "spark.databricks.delta.properties.defaults.enableChangeDataFeed", "true")
     checkpoint_location = str(checkpoint_root / "_checkpoints")
     schema_location = str(checkpoint_root / "_schema")
 
