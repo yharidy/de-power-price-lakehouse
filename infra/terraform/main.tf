@@ -21,3 +21,11 @@ resource "databricks_volume" "landing" {
   name         = "landing"
   volume_type  = "MANAGED"
 }
+
+resource "databricks_volume" "checkpoints" {
+  for_each     = toset(var.environment)
+  catalog_name = var.catalog_name
+  schema_name  = databricks_schema.layer["${each.key}_bronze"].name
+  name         = "checkpoints"
+  volume_type  = "MANAGED"
+}

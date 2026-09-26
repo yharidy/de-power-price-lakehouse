@@ -1,7 +1,7 @@
 resources:
   jobs:
     daily_api_ingestion:
-      name: de-power-price-daily-ingestion
+      name: de-power-price-daily-pipeline
       environments:
         - environment_key: wheel_env
           spec:
@@ -41,7 +41,7 @@ resources:
               - "--source-path"
               - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/price"
               - "--checkpoint-root"
-              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/price"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/checkpoints/price"
               - "--target-table"
               - "${var.catalog}.${var.bronze_schema}.energy_price_raw"
 
@@ -67,9 +67,11 @@ resources:
               - "--source-path"
               - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/public_power"
               - "--checkpoint-root"
-              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/public_power"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/checkpoints/public_power"
               - "--target-table"
               - "${var.catalog}.${var.bronze_schema}.public_power_raw"
+              - "--schema-hints"
+              - "values map<string,double>"
 
         - task_key: weather_api
           environment_key: wheel_env
@@ -91,6 +93,13 @@ resources:
               - "--source-path"
               - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/weather"
               - "--checkpoint-root"
-              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/weather"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/checkpoints/weather"
               - "--target-table"
               - "${var.catalog}.${var.bronze_schema}.weather_raw"
+        - task_key: silver_pipeline
+          depends_on:
+            - task_key: bronze_price_table
+            - task_key: bronze_public_power_table
+            - task_key: bronze_weather_table
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_pipeline.id}

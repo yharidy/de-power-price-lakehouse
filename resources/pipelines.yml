@@ -1,0 +1,15 @@
+resources:
+  pipelines:
+    silver_pipeline:
+      name: de-power-price-silver
+      serverless: true
+      catalog: ${var.catalog}
+      target: ${var.silver_schema}
+      configuration:
+        bronze_price_table: ${var.catalog}.${var.bronze_schema}.energy_price_raw
+        bronze_public_power_table: ${var.catalog}.${var.bronze_schema}.public_power_raw
+        bronze_weather_table: ${var.catalog}.${var.bronze_schema}.weather_raw
+      libraries:
+        - glob:
+            include: ../src/de_power_price/silver/**
+        
