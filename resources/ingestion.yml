@@ -5,7 +5,7 @@ resources:
       environments:
         - environment_key: wheel_env
           spec:
-            environment_version: "2"
+            environment_version: "5"
             dependencies:
               - ../dist/*.whl
         - environment_key: pyspark_env
