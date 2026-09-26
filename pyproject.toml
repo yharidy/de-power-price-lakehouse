@@ -5,7 +5,7 @@ description = "German Power Price Lakehouse demo project"
 requires-python = ">=3.11"
 dependencies = [
     "requests",
-    "tenacity",
+    "tenacity"
 ]
 
 [dependency-groups]

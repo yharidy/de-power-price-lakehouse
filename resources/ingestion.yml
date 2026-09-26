@@ -1,0 +1,96 @@
+resources:
+  jobs:
+    daily_api_ingestion:
+      name: de-power-price-daily-ingestion
+      environments:
+        - environment_key: wheel_env
+          spec:
+            environment_version: "2"
+            dependencies:
+              - ../dist/*.whl
+        - environment_key: pyspark_env
+          spec:
+            environment_version: "2"
+            dependencies: []
+
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"
+        timezone_id: "Europe/Berlin"
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: price_api
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+            - "--endpoint"
+            - "price"
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/price"
+        
+        - task_key: bronze_price_table
+          environment_key: pyspark_env
+          depends_on:
+            - task_key: price_api
+          spark_python_task:
+            python_file: ../src/de_power_price/autoloader/autoload.py
+            parameters:
+              - "--source-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/price"
+              - "--checkpoint-root"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/price"
+              - "--target-table"
+              - "${var.catalog}.${var.bronze_schema}.energy_price_raw"
+
+        - task_key: public_power_api
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+            - "--endpoint"
+            - "public_power"
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/public_power"
+
+        - task_key: bronze_public_power_table
+          environment_key: pyspark_env
+          depends_on:
+            - task_key: public_power_api
+          spark_python_task:
+            python_file: ../src/de_power_price/autoloader/autoload.py
+            parameters:
+              - "--source-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/public_power"
+              - "--checkpoint-root"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/public_power"
+              - "--target-table"
+              - "${var.catalog}.${var.bronze_schema}.public_power_raw"
+
+        - task_key: weather_api
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: weather_api
+            parameters:
+            - "--previous-day"
+            - "--target-path" 
+            - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/weather"
+
+        - task_key: bronze_weather_table
+          environment_key: pyspark_env
+          depends_on:
+            - task_key: weather_api
+          spark_python_task:
+            python_file: ../src/de_power_price/autoloader/autoload.py
+            parameters:
+              - "--source-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/weather"
+              - "--checkpoint-root"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/_checkpoints/weather"
+              - "--target-table"
+              - "${var.catalog}.${var.bronze_schema}.weather_raw"

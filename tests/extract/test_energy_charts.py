@@ -3,8 +3,9 @@
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-from de_power_price.api import energy_charts
 import pytest
+
+from de_power_price.api import energy_charts
 
 # ---------------------------------------------------------------------------
 # build_url
