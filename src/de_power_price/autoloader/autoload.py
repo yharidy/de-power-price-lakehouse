@@ -16,7 +16,7 @@ def run_autoloader(spark: SparkSession, source_path: Path, checkpoint_root: Path
     reader = spark.readStream.format("cloudFiles").option("cloudFiles.format", "json").option("cloudFiles.schemaLocation", schema_location).option(
         "cloudFiles.inferColumnTypes", "true").option("cloudFiles.schemaEvolutionMode", "addNewColumns")
     if schema_hints:
-        reader.option("cloudFiles.schemaHints", schema_hints)
+        reader = reader.option("cloudFiles.schemaHints", schema_hints)
 
     df = reader.load(str(source_path))
     df = df.select("*", F.col("_metadata.file_name").alias("_source_filename"),
