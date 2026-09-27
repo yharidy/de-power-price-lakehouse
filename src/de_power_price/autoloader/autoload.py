@@ -25,7 +25,8 @@ def run_autoloader(spark: SparkSession, source_path: Path, checkpoint_root: Path
                        "_source_file_modified_at"),
                    F.current_timestamp().alias("_ingested_at"))
 
-    query = df.writeStream.option("checkpointLocation", checkpoint_location).trigger(
+    query = df.writeStream.option("checkpointLocation", checkpoint_location).option(
+        "mergeSchema", "true").trigger(
         availableNow=True).toTable(target_table)
 
     query.awaitTermination()
