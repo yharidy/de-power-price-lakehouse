@@ -96,6 +96,7 @@ resources:
               - "/Volumes/${var.catalog}/${var.bronze_schema}/checkpoints/weather"
               - "--target-table"
               - "${var.catalog}.${var.bronze_schema}.weather_raw"
+
         - task_key: silver_pipeline
           depends_on:
             - task_key: bronze_price_table
@@ -103,3 +104,25 @@ resources:
             - task_key: bronze_weather_table
           pipeline_task:
             pipeline_id: ${resources.pipelines.silver_pipeline.id}
+
+        - task_key: gold_pipeline
+          depends_on:
+            - task_key: silver_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_pipeline.id}
+        
+        - task_key: check_is_prod
+          depends_on:
+            - task_key: gold_pipeline
+          condition_task:
+            op: EQUAL_TO
+            left: "${var.gold_schema}"
+            right: "prod_gold"
+        
+        - task_key: refresh_dashboard
+          depends_on: 
+            - task_key: check_is_prod
+              outcome: "true"
+          dashboard_task:
+            dashboard_id: ${resources.dashboards.energy_weather_dashboard.id}
+          

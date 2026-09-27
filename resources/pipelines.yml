@@ -12,4 +12,15 @@ resources:
       libraries:
         - glob:
             include: ../src/de_power_price/silver/**
+    gold_pipeline:
+      name: de-power-price-gold
+      serverless: true
+      catalog: ${var.catalog}
+      target: ${var.gold_schema}
+      configuration:
+        catalog: ${var.catalog} 
+        silver_schema: ${var.silver_schema}
+      libraries:
+        - glob:
+            include: ../src/de_power_price/gold/**
         

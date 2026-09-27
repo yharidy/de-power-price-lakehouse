@@ -1,0 +1,6 @@
+resources:
+  dashboards:
+    energy_weather_dashboard:
+      display_name: "Germany Power Price & Weather"
+      file_path: ../src/de_power_price/dashboards/energy_weather_price.lvdash.json
+      warehouse_id: ${var.warehouse_id}

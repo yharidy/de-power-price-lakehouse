@@ -1,0 +1,61 @@
+resources:
+  jobs:
+    backfill:
+      name: de-power-price-backfill
+
+      parameters:
+        - name: start_date
+          default: "2026-01-01"
+        - name: end_date
+          default: "2026-01-02"
+
+      environments:
+        - environment_key: wheel_env
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: price_api_backfill
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+              - "--endpoint"
+              - "price"
+              - "--start"
+              - "{{job.parameters.start_date}}"
+              - "--end"
+              - "{{job.parameters.end_date}}"
+              - "--target-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/price"
+
+        - task_key: public_power_api_backfill
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: energy_charts_api
+            parameters:
+              - "--endpoint"
+              - "public_power"
+              - "--start"
+              - "{{job.parameters.start_date}}"
+              - "--end"
+              - "{{job.parameters.end_date}}"
+              - "--target-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/public_power"
+
+        - task_key: weather_api_backfill
+          environment_key: wheel_env
+          python_wheel_task:
+            package_name: de-power-price-lakehouse
+            entry_point: weather_api
+            parameters:
+              - "--start"
+              - "{{job.parameters.start_date}}"
+              - "--end"
+              - "{{job.parameters.end_date}}"
+              - "--target-path"
+              - "/Volumes/${var.catalog}/${var.bronze_schema}/landing/weather"

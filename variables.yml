@@ -14,3 +14,7 @@ variables:
   gold_schema: 
     description: Name of the gold schema
     default: dev_gold
+  
+  warehouse_id:
+    description: Warehouse ID
+    default: "55c964975b594300"

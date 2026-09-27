@@ -1,0 +1,772 @@
+{
+  "datasets": [
+    {
+      "name": "negative_prices",
+      "displayName": "Most Negative Prices (Top 20)",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT timestamp_utc, day_ahead_price, renewable_share_of_generation, wind_speed, cloud_cover FROM de_power_price.prod_gold.negative_prices ORDER BY day_ahead_price ASC LIMIT 20\n",
+        "dimensions": [
+          {
+            "name": "timestamp_utc",
+            "expr": "timestamp_utc",
+            "displayName": "Timestamp (UTC)",
+            "format": {
+              "type": "date_time",
+              "dateFormat": "year_month_day",
+              "timeFormat": "locale_hour_minute"
+            }
+          },
+          {
+            "name": "day_ahead_price",
+            "expr": "day_ahead_price",
+            "displayName": "Day-Ahead Price (EUR/MWh)"
+          },
+          {
+            "name": "renewable_share_of_generation",
+            "expr": "renewable_share_of_generation",
+            "displayName": "Renewable Share of Generation"
+          },
+          {
+            "name": "wind_speed",
+            "expr": "wind_speed",
+            "displayName": "Wind Speed (m/s)"
+          },
+          {
+            "name": "cloud_cover",
+            "expr": "cloud_cover",
+            "displayName": "Cloud Cover"
+          }
+        ]
+      }
+    },
+    {
+      "name": "energy_weather",
+      "displayName": "Energy Weather Price",
+      "config": {
+        "version": "1.1",
+        "source": "de_power_price.prod_gold.energy_weather_price",
+        "dimensions": [
+          {
+            "name": "timestamp_utc",
+            "expr": "timestamp_utc",
+            "displayName": "Timestamp (UTC)",
+            "format": {
+              "type": "date_time",
+              "dateFormat": "year_month_day",
+              "timeFormat": "locale_hour_minute"
+            }
+          },
+          {
+            "name": "hour_of_day",
+            "expr": "HOUR(timestamp_utc)",
+            "displayName": "Hour of Day"
+          },
+          {
+            "name": "day_ahead_price",
+            "expr": "day_ahead_price",
+            "displayName": "Day-Ahead Price (EUR/MWh)"
+          },
+          {
+            "name": "wind_onshore",
+            "expr": "wind_onshore",
+            "displayName": "Wind Onshore (MW)"
+          },
+          {
+            "name": "wind_offshore",
+            "expr": "wind_offshore",
+            "displayName": "Wind Offshore (MW)"
+          },
+          {
+            "name": "solar",
+            "expr": "solar",
+            "displayName": "Solar (MW)"
+          },
+          {
+            "name": "renewable_share_of_generation",
+            "expr": "renewable_share_of_generation",
+            "displayName": "Renewable Share of Generation"
+          },
+          {
+            "name": "wind_speed",
+            "expr": "wind_speed",
+            "displayName": "Wind Speed (m/s)"
+          },
+          {
+            "name": "cloud_cover",
+            "expr": "cloud_cover",
+            "displayName": "Cloud Cover"
+          },
+          {
+            "name": "temperature",
+            "expr": "temperature",
+            "displayName": "Temperature (C)"
+          }
+        ],
+        "measures": [
+          {
+            "name": "avg_price",
+            "expr": "AVG(day_ahead_price)",
+            "displayName": "Avg Day-Ahead Price"
+          },
+          {
+            "name": "min_price",
+            "expr": "MIN(day_ahead_price)",
+            "displayName": "Min Day-Ahead Price"
+          },
+          {
+            "name": "neg_price_pct",
+            "expr": "SUM(CASE WHEN day_ahead_price < 0 THEN 1 ELSE 0 END) / COUNT(1)",
+            "displayName": "Negative Price Pct",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "7d65b636",
+      "displayName": "German Power Price & Weather",
+      "layout": [
+        {
+          "widget": {
+            "name": "kpi_avg_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "measure(avg_price)",
+                      "expression": "MEASURE(`avg_price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Price"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(avg_price)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "price_generation_combo",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "timestamp_utc",
+                      "expression": "`timestamp_utc`"
+                    },
+                    {
+                      "name": "day_ahead_price",
+                      "expression": "`day_ahead_price`"
+                    },
+                    {
+                      "name": "wind_onshore",
+                      "expression": "`wind_onshore`"
+                    },
+                    {
+                      "name": "solar",
+                      "expression": "`solar`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Price & Renewable Generation Over Time"
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#FF6B35",
+                  "#4ECDC4",
+                  "#FFD93D"
+                ]
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp_utc",
+                  "axis": {
+                    "title": "Timestamp (UTC)"
+                  },
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "primary": {
+                    "fields": [
+                      {
+                        "fieldName": "day_ahead_price",
+                        "displayName": "Day-Ahead Price (EUR/MWh)"
+                      }
+                    ],
+                    "scale": {
+                      "type": "quantitative"
+                    },
+                    "axis": {
+                      "title": "Day-Ahead Price (EUR/MWh)"
+                    }
+                  },
+                  "secondary": {
+                    "fields": [
+                      {
+                        "fieldName": "wind_onshore",
+                        "displayName": "Wind Onshore (MW)"
+                      },
+                      {
+                        "fieldName": "solar",
+                        "displayName": "Solar (MW)"
+                      }
+                    ],
+                    "scale": {
+                      "type": "quantitative"
+                    },
+                    "axis": {
+                      "title": "Generation (MW)"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_min_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "measure(min_price)",
+                      "expression": "MEASURE(`min_price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Min Price"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(min_price)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 8,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "scatter_renewable_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "renewable_share_of_generation",
+                      "expression": "`renewable_share_of_generation`"
+                    },
+                    {
+                      "name": "day_ahead_price",
+                      "expression": "`day_ahead_price`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Renewable Share vs Day-Ahead Price"
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#FF6B35"
+                ],
+                "opacity": 0.6
+              },
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "renewable_share_of_generation",
+                  "axis": {
+                    "title": "Renewable Share of Generation"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "day_ahead_price",
+                  "axis": {
+                    "title": "Day-Ahead Price (EUR/MWh)"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_neg_price_pct",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "measure(neg_price_pct)",
+                      "expression": "MEASURE(`neg_price_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Negative Price %",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(neg_price_pct)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 8,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "scatter_wind_generation",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "wind_speed",
+                      "expression": "`wind_speed`"
+                    },
+                    {
+                      "name": "wind_onshore",
+                      "expression": "`wind_onshore`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Wind Speed vs Wind Onshore Generation",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#4ECDC4"
+                ],
+                "opacity": 0.6
+              },
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "wind_speed",
+                  "axis": {
+                    "title": "Wind Speed (m/s)"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "wind_onshore",
+                  "axis": {
+                    "title": "Wind Onshore (MW)"
+                  },
+                  "scale": {
+                    "type": "quantitative",
+                    "domain": {
+                      "type": "custom",
+                      "min": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "avg_price_by_hour",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "hour_of_day",
+                      "expression": "`hour_of_day`"
+                    },
+                    {
+                      "name": "measure(avg_price)",
+                      "expression": "MEASURE(`avg_price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Avg Day-Ahead Price by Hour of Day",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour_of_day",
+                  "displayName": "hour_of_day",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(avg_price)",
+                  "displayName": "avg_price",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 12,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "negative_prices_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "negative_prices",
+                  "fields": [
+                    {
+                      "name": "timestamp_utc",
+                      "expression": "`timestamp_utc`"
+                    },
+                    {
+                      "name": "day_ahead_price",
+                      "expression": "`day_ahead_price`"
+                    },
+                    {
+                      "name": "renewable_share_of_generation",
+                      "expression": "`renewable_share_of_generation`"
+                    },
+                    {
+                      "name": "wind_speed",
+                      "expression": "`wind_speed`"
+                    },
+                    {
+                      "name": "cloud_cover",
+                      "expression": "`cloud_cover`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "20 Most Negative Price Rows",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "timestamp_utc"
+                  },
+                  {
+                    "fieldName": "day_ahead_price"
+                  },
+                  {
+                    "fieldName": "renewable_share_of_generation"
+                  },
+                  {
+                    "fieldName": "wind_speed"
+                  },
+                  {
+                    "fieldName": "cloud_cover"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 12,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "8ef442dc",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"font-size: 18px;\">**German Power Price & Weather**</span><br>This dashboard tracks Germany's day-ahead electricity price (EUR/MWh) alongside renewable generation and weather observations, refreshed daily via an automated Databricks pipeline (Auto Loader → Lakeflow Declarative Pipelines → this dashboard). It explores how solar and wind output drive price down — sometimes below zero — and highlights when and why those negative-price events occur."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "global_filters",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "date_range_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1ba4f4add1d35867294be6adb3e9a/datasets/01f1ba50137e19d9973b18b2c653ae81_timestamp_utc",
+                "query": {
+                  "datasetName": "energy_weather",
+                  "fields": [
+                    {
+                      "name": "timestamp_utc",
+                      "expression": "`timestamp_utc`"
+                    },
+                    {
+                      "name": "timestamp_utc_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1ba4f4add1d35867294be6adb3e9a/datasets/01f1ba50134b1b5fa781fa53d3ebbb5e_timestamp_utc",
+                "query": {
+                  "datasetName": "negative_prices",
+                  "fields": [
+                    {
+                      "name": "timestamp_utc",
+                      "expression": "`timestamp_utc`"
+                    },
+                    {
+                      "name": "timestamp_utc_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Date Range"
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "timestamp_utc",
+                    "queryName": "dashboards/01f1ba4f4add1d35867294be6adb3e9a/datasets/01f1ba50137e19d9973b18b2c653ae81_timestamp_utc"
+                  },
+                  {
+                    "fieldName": "timestamp_utc",
+                    "queryName": "dashboards/01f1ba4f4add1d35867294be6adb3e9a/datasets/01f1ba50134b1b5fa781fa53d3ebbb5e_timestamp_utc"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "visualizationColors": [
+        "#FF6B35",
+        "#4ECDC4",
+        "#FFD93D",
+        "#6366F1",
+        "#F472B6",
+        "#34D399"
+      ],
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED",
+      "widgetCornerRadius": 8,
+      "widgetShadow": 10
+    },
+    "applyModeEnabled": false
+  },
+  "bookmarks": [
+    {
+      "name": "26f6a33f",
+      "displayName": "Last Month",
+      "widgetSelections": [
+        {
+          "pageName": "global_filters",
+          "widgetName": "date_range_filter",
+          "selectionJson": "{\"kind\":\"range\",\"dataType\":\"datetime\",\"min\":{\"value\":\"now-1M/d\"},\"max\":{\"value\":\"now/d\"}}"
+        }
+      ]
+    }
+  ]
+}
