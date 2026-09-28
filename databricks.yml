@@ -26,8 +26,8 @@ targets:
       root_path: /Workspace/Users/youssef.haridy@gmail.com/.bundle/${bundle.name}/${bundle.target}
     resources:
       jobs:
-        daily_pipeline:
-          scheduler:
+        daily_api_ingestion:
+          schedule:
             quartz_cron_expression: "0 0 5 * * ?"
             timezone_id: "Europe/Berlin"
             pause_status: UNPAUSED
