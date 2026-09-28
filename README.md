@@ -1,183 +1,169 @@
-# DE Power Price Lakehouse
+# German Power Price Lakehouse
 
-> How do wind, solar, and weather drive German day-ahead electricity prices, and when do prices go negative?
+**An end-to-end data engineering project built on Databricks — from infrastructure provisioning to an analytical dashboard.**
 
-An end-to-end data engineering project on the Databricks Data Intelligence Platform. It ingests public German power market and weather data, models it in a medallion architecture (bronze, silver, gold), and serves analytics-ready tables. Infrastructure is managed with **Terraform**, and pipelines, jobs, and environments are deployed with **Declarative Automation Bundles** (formerly Databricks Asset Bundles) and **GitHub Actions**.
+This project demonstrates how to build and deploy a reproducible, production-oriented data pipeline on Databricks.
 
-<!-- TODO: add a hero screenshot of the final dashboard -->
-<!-- ![Dashboard](docs/images/dashboard.png) -->
+**Public APIs → Unity Catalog Volumes → Auto Loader → Silver streaming/CDC pipeline → Gold analytical models → Dashboard**
 
-**Status:** 🚧 In progress. See the [roadmap](#roadmap) for what is done.
+The entire workflow is orchestrated by a **Lakeflow Job**, deployed to dev and prod with **Databricks Asset Bundles**, and provisioned with **Terraform**. Once the infrastructure and bundle are deployed, the complete pipeline runs without manual intervention.
+
+## Live results
+
+The panels below are pulled directly from the dashboard and show the core relationship this project set out to measure: as renewable output rises, the day-ahead price falls — and drops below zero at the extremes.
+
+![Price & Renewable Generation Over Time](docs/images/price_and_renewable_generation.png)
+
+*Day-ahead price tracking against solar and wind onshore generation.*
+
+![Renewable Share vs Day-Ahead Price](docs/images/price_vs_renewable_share.png)
+*Renewable share of generation vs. day-ahead pricet.*
 
 ---
 
-## Why this project
+## TL;DR
 
-Germany's electricity price is driven by a simple mechanism with surprising consequences. Wind and solar cost almost nothing to run, so when they produce a lot, they push the day-ahead price down, sometimes below zero. Price spikes and negative-price hours are directly relevant to energy traders, grid operators, and anyone with flexible demand (batteries, EV charging, industry).
+- **The context:** Germany's electricity price is set a full day ahead of delivery, based on the forecast energy generation mix — and it can drop below zero when the output from renewable sources floods the grid. This project builds a full, production-shaped data pipeline on real energy market, power generation, and weather data to quantify that relationship: how price moves with the energy mix, and under what conditions it goes negative.
+- **The architecture:** a real medallion lakehouse — Auto Loader ingestion with schema evolution, a **streaming table + AUTO CDC Flows** pattern for data cleanup and deduplication, gold marts in the form of **Materialized Views** for analytics, and one Lakeflow Job orchestrating the data flow from ingestion to the final dashboard.
+- **The deployment:** **Terraform** for infrastructure-as-code and **Databricks Asset Bundles** for defining declarative pipelines and for environment promotion (dev/prod)
+- **The constraint:** built entirely on Databricks Free Edition — no clusters, no custom catalogs, no paid features. 
 
-This project builds the data foundation to explore that relationship:
+--- 
+## Why this project exists
 
-- **What share of generation comes from renewables in each hour, and how does that relate to the price?**
-- **How often, and under which weather conditions, do negative prices occur?**
-- **How do wind lulls and cloudy periods show up in prices?**
+This project was built as an end-to-end **data engineering exercise**: to design a realistic pipeline from infrastructure provisioning all the way to a production-style analytical product.
 
-It is also a deliberate exercise in production-style practices on a small, free-to-run footprint: infrastructure as code, environment promotion, data quality checks, governed access, and CI/CD.
+I wanted to demonstrate what it looks like to build a data platform **properly and reproducibly**:
 
-## Architecture
+* provision the infrastructure with **Terraform**
+* ingest external data reliably into a **lakehouse**
+* structure transformations using the **medallion architecture**
+* orchestrate the complete pipeline with **Lakeflow Jobs**
+* deploy the same project across **dev/prod** using Databricks Asset Bundles
+* expose the resulting data through a **dashboard** 
+
+The German electricity market provides a useful real-world dataset for this exercise: it has multiple independent data sources, time-series data, changing schemas, and interesting relationships between generation, weather, and prices. The domain is therefore the **workload**, while the primary focus of the project is the engineering behind it.
+
+
+---
+
+## Pipeline Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Sources
-        EC[Energy-Charts API<br/>generation + day-ahead price]
+        EC[Energy-Charts API<br/>price + generation]
         BS[Bright Sky API<br/>DWD weather]
-        REF[Reference CSV<br/>production types]
     end
 
-    subgraph Bronze
+    subgraph "Bronze — Auto Loader"
         VOL[(Landing Volume<br/>raw JSON)]
-        B1[Streaming tables<br/>Auto Loader]
-        B2[Weather table<br/>REST client job]
-        B3[Reference table<br/>COPY INTO]
+        B1[energy_price_raw]
+        B2[public_power_raw]
+        B3[weather_raw]
     end
 
-    subgraph Silver
-        S1[Cleaned generation<br/>and price]
-        S2[Cleaned weather]
+    subgraph "Silver — streaming table + AUTO CDC"
+        S1S[price_clean_staged] --> S1[price_clean]
+        S2S[public_power_clean_staged] --> S2[public_power_clean]
+        S3S[weather_clean_staged] --> S3[weather_clean]
     end
 
-    subgraph Gold
-        G1[Hourly price vs<br/>renewable share MV]
-        G2[Negative-price<br/>analysis]
-        G3[Dashboard table]
+    subgraph "Gold — materialized views"
+        G1[public_power_pivoted<br/>PIVOT long to wide]
+        G2[energy_weather_price<br/>joined fact table]
+        G3[negative_prices<br/>plain view]
     end
 
-    EC --> VOL --> B1 --> S1
-    BS --> B2 --> S2
-    REF --> B3 --> S1
-    S1 --> G1
+    D[Dashboard]
+
+    EC --> VOL --> B1 --> S1S
+    EC --> VOL --> B2 --> S2S
+    BS --> VOL --> B3 --> S3S
     S2 --> G1
+    S1 --> G2
     G1 --> G2
-    G1 --> G3
+    S3 --> G2
+    G2 --> G3
+    G2 --> D
+    G3 --> D
 ```
 
-<!-- TODO: replace with the final diagram once the pipeline is built -->
 
-### Design in one paragraph
+**One Lakeflow Job:** `python_wheel_task` (API extraction) → `spark_python_task` (Auto Loader ingestion) → `pipeline_task` x2 (silver, then gold) → `condition_task` (is this prod?) → `dashboard_task` (refresh, prod only). A separate, parameter-driven **backfill job** handles historical loads without touching the daily schedule.
 
-Raw API responses land as JSON files in a Unity Catalog Volume, which Auto Loader ingests incrementally into bronze streaming tables. Weather is pulled by a scheduled job using a REST client. Silver tables clean, type, and deduplicate the data and enforce quality expectations. Gold materialized views join generation, price, and weather on the hour. A Lakeflow Job orchestrates extraction and the pipeline with retries, branching, and a file-arrival trigger.
 
-## Tech stack
+![End-to-end Lakeflow Job](docs/images/lakeflow_job.png)
+*The full DAG: API extraction, Auto Loader ingestion, silver, gold, and a conditional dashboard refresh.*
 
-| Layer | Tools |
-|---|---|
-| Platform | Databricks (Free Edition, serverless), Unity Catalog, Delta Lake |
-| Ingestion | Auto Loader, `COPY INTO`, Python REST clients |
-| Transformation | PySpark / SQL, Lakeflow Spark Declarative Pipelines (streaming tables, materialized views) |
-| Orchestration | Lakeflow Jobs (task graph, retries, conditional tasks, file-arrival trigger) |
-| Infrastructure as code | Terraform (`databricks/databricks` provider) |
-| Deployment | Declarative Automation Bundles, Databricks CLI |
-| CI/CD | GitHub Actions (`bundle validate`, `bundle deploy`, `pytest`) |
-| Governance | Unity Catalog grants, row filters, column masks |
+![Silver Pipeline](docs/images/silver_pipeline.png)
+
+*Silver layer: staged streaming tables feeding AUTO CDC flows — achieves deduplication while preserving incremental updates, avoiding full refreshes.*
+
+![Gold Pipeline](docs/images/gold_pipeline.png)
+
+*Gold layer: analytics tables - join and aggregate data from upstream tables into Materialized Views.*
+
+
+
+## Dashboard
+
+Live panels include price vs. renewable generation over time, renewable share vs. price correlation, average price by hour of day, and a drill-down table of the most negative price events with their weather context. Refreshed automatically as the last step of the production pipeline run.
+
+![Complete Dashboard](docs/images/dashboard.png)
+
+## Design choices
+
+The reasoning behind some of the design choices made in this project are documented in [docs/decisions.md](docs/decisions.md).
 
 ## Data sources
 
 | Source | Content | Access |
 |---|---|---|
-| [Energy-Charts API](https://api.energy-charts.info/) (Fraunhofer ISE) | Electricity generation by production type; day-ahead spot price for the DE-LU bidding zone | Public REST, no key |
+| [Energy-Charts API](https://api.energy-charts.info/) (Fraunhofer ISE) | Generation by production type, day-ahead price for the DE-LU bidding zone | Public REST, no key, CC BY 4.0 |
 | [Bright Sky](https://brightsky.dev/) | Hourly weather from Germany's national weather service (DWD) | Public REST, no key |
 
-**Attribution and licensing:** <!-- TODO: verify the current license terms of the Energy-Charts price data and DWD's terms of use, then state them here exactly. -->
 
-**Scope:** the project pulls a limited date range (a few months) to stay within Free Edition compute limits.
 
 ## Infrastructure
 
-Terraform owns the stable foundations, and the bundle owns everything that changes with code.
+Terraform provisions the stable foundations (schemas, landing volumes, etc.); the Asset Bundle owns everything that changes with code (jobs, pipelines, dashboard). See **[infra/README.md](infra/README.md)** for the full Terraform walkthrough.
 
-| Managed by Terraform | Managed by the bundle |
-|---|---|
-| Schemas (`bronze`, `silver`, `gold`) per environment | Lakeflow Jobs |
-| Landing Volumes | Declarative pipeline |
-| Grants | Notebooks, SQL, dashboard |
-| | Dev / prod targets and variables |
+![Unity Catalog](docs/images/catalog.png)
 
-**Environments:** `dev` and `prod` are separated by schema prefix (e.g. `dev_bronze`, `prod_bronze`) inside a single catalog. Free Edition uses managed Default Storage, which does not allow creating catalogs through the API. In a real setup I would use a catalog per environment. See [docs/decisions.md](docs/decisions.md).
+
 
 ## Repository structure
 
 ```
 .
-├── databricks.yml          # bundle root: targets and variables
-├── infra/terraform/        # catalog objects, volumes, grants
-├── resources/              # bundle resources: jobs, pipeline, dashboard
-├── src/
-│   ├── extract/            # API clients
-│   ├── pipeline/           # bronze / silver / gold definitions
-│   └── sql/                # COPY INTO, governance
-├── data/reference/         # small reference files
-├── tests/                  # pytest for transformation logic
-├── docs/                   # architecture, decision log, screenshots
-└── .github/workflows/      # CI and deploy
+├── databricks.yml              # bundle root: dev/prod targets
+├── variables.yml                # catalog + schema variables
+├── infra/terraform/             # schemas, volumes — see infra/README.md
+├── resources/
+│   ├── daily_pipeline.yml       # the main scheduled job
+│   ├── backfill_pipeline.yml    # manual, parameterized backfill job
+│   ├── pipelines.yml            # silver + gold Lakeflow Pipeline definitions
+│   └── dashboards.yml
+├── src/de_power_price/
+│   ├── api/                     # Energy-Charts + Bright Sky extraction clients
+│   ├── autoloader/               # reusable Auto Loader ingestion script
+│   ├── silver/                   # staged streaming tables + AUTO CDC flows
+│   └── gold/                     # pivot + fact table + negative-price view
+├── tests/                        # pytest — unit + fixture-based
+├── docs/decisions.md             # design decisions 
+└── .devcontainer/                # reproducible dev environment — see DEVELOPMENT.md
 ```
 
-## Quickstart
 
-> Prerequisites: a [Databricks Free Edition](https://www.databricks.com/learn/free-edition) workspace, the [Databricks CLI](https://docs.databricks.com/dev-tools/cli/), and [Terraform](https://developer.hashicorp.com/terraform/downloads).
 
-```bash
-# 1. Authenticate the CLI (creates a profile in ~/.databrickscfg)
-databricks auth login --host https://<your-workspace-url> --profile free
+## Documentation map
 
-# 2. Provision schemas and volumes
-cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars   # set catalog_name
-terraform init
-terraform apply
+- **[infra/README.md](infra/README.md)** — Terraform: what it provisions, how to run it
+- **[docs/decisions.md](docs/decisions.md)** — reasoning behind some design choices.
+- **[.devcontainer/DEVELOPMENT.md](.devcontainer/DEVELOPMENT.md)** — local setup, running tests, deploying the bundle, triggering a backfill
 
-# 3. Deploy the bundle (jobs, pipeline, dashboard)
-cd ../..
-databricks bundle validate -t dev
-databricks bundle deploy -t dev
-```
-
-<!-- TODO: add the commands to run the jobs once they exist -->
-
-## Roadmap
-
-- [x] Terraform: schemas and landing volumes per environment
-- [ ] Bundle skeleton with dev / prod targets
-- [ ] Bronze: Auto Loader ingestion of generation and price
-- [ ] Bronze: weather ingestion via REST client job
-- [ ] Bronze: reference data with `COPY INTO`
-- [ ] Silver: cleaning, deduplication, data quality expectations
-- [ ] Gold: materialized views and dashboard table
-- [ ] Orchestration: retries, conditional task, file-arrival trigger
-- [ ] Governance: grants, row filter, column mask
-- [ ] CI/CD: validate on PR, deploy on merge, pytest
-- [ ] Dashboard, screenshots, and walkthrough video
-
-## Limitations of Free Edition
-
-Documented here rather than faked:
-
-- **Serverless only:** no cluster configuration, so cluster sizing and Spark UI tuning are not part of this project.
-- **No custom catalogs or external locations:** so external tables and per-environment catalogs are out of scope.
-- **Lakeflow Connect managed connectors and ABAC policies:** <!-- TODO: confirm availability -->
-- **Limited compute and job concurrency:** the data volume is intentionally small.
-
-## What I would do at scale
-
-<!-- TODO: fill in after the build. Ideas to cover: -->
-<!-- - Catalog per environment with separate workspaces -->
-<!-- - Remote Terraform state and Terraform in CI -->
-<!-- - Service principal for deployments -->
-<!-- - Alerting and SLAs on job runs -->
-<!-- - Forecast and intraday data, more bidding zones -->
-
-## Design decisions
-
-The reasoning behind key choices (Auto Loader vs `COPY INTO`, materialized views vs tables, schema-based environments, Terraform vs bundle boundaries) is documented in [docs/decisions.md](docs/decisions.md).
 
 ## Acknowledgments
 
-Data from Fraunhofer ISE's Energy-Charts and the German Weather Service (DWD) via Bright Sky. <!-- TODO: final attribution wording -->
+Data from Fraunhofer ISE's [Energy-Charts](https://api.energy-charts.info/) and the German Weather Service (DWD) via [Bright Sky](https://brightsky.dev/).

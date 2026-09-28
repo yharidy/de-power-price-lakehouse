@@ -1,45 +1,55 @@
-# How to provision the infrastructure
+# Infrastructure — Terraform
 
-1. Create a free account on Databricks
-2. Install the Databricks CLI (available in the devcontainer) and Authenticate against Databricks by running 
+This folder provisions the stable, rarely-changing foundations of the lakehouse: schemas and landing volumes. 
+## What gets created
+
+| Resource | Purpose |
+|---|---|
+| `databricks_schema` (×6) | `dev_bronze`, `dev_silver`, `dev_gold`, `prod_bronze`, `prod_silver`, `prod_gold` — see [environment design](#environment-design-schema-prefix-not-catalog-per-environment) below |
+| `databricks_volume` (×2, one per environment) | The landing Volume each environment's Auto Loader ingestion reads from |
+
+
+
+## Setup and running Terraform
+
+### Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) ≥ 1.16.4
+- The [Databricks CLI](https://docs.databricks.com/dev-tools/cli/) v1.18.0, authenticated (see the root [DEVELOPMENT.md](../.devcontainer/DEVELOPMENT.md) for the `databricks auth login` step — Terraform reuses the same `~/.databrickscfg` profile)
+- An existing Unity Catalog catalog on your workspace to point Terraform at (Free Edition ships with a default one — find its name in Catalog Explorer)
+
+### Steps
+
 ```bash
-    databricks auth login --host <url-to-your-databricks-instance>
+cd infra/terraform
+
+# Copy the example vars file and fill in your catalog name
+cp terraform.tfvars.example terraform.tfvars
+# then edit terraform.tfvars:
+#   catalog_name        = "<your catalog name, from Catalog Explorer>"
+#   databricks_profile  = "<your ~/.databrickscfg profile name>"
+
+terraform init
+terraform plan    # review: should show N schemas + N volumes to add, nothing to destroy
+terraform apply   # type "yes" to confirm
 ```
-This will create ~/.databrickscfg and write your credentials and profile to it (free for the free tier).
-3. Initialize Terraform:
-Terraform is already installed in the devcontainer. To initalize, run the following command in the infra/terraform directory.
+
+### Verifying it worked
+
 ```bash
-terraform init 
-```
-Terraform will load the require_providers block from versions.tf and download the "databricks/databricks" plugin from the Terraform registry into a hidden .terraform/ directory.
-
-The Databricks plugin loads the provider information from the providers.tf file, sees the profile set to "free" and checks the ~/.databrickscfg file for the corresponding section where the workspace URL and credemtoaös are stored.
-
-4. Workaround due to Databricks' Free edition limitation: create a catalog in the Databricks UI
-Databricks' Free tier doesn't create a dedicated maetastore for your workspace. Terraform can't create catalogs on the shared metastore. In order to isolate this project's assets, create a catalog in the Databricks UI and write it to 
-infra/terraform/terraform.tfvars.
-e.g.
-```text
-catalog_name = "de_power_price"
+terraform output
 ```
 
-4. Plan and apply changes
+This prints the schema full names and landing volume paths that the Bundle's variables need to match (`variables.yml` at the repo root). Cross-check a couple of these against Catalog Explorer in the workspace UI.
 
-To plan changes based on the local state of the Terraform files, run:
+### Tearing down
+
 ```bash
-terraform plan
-```
-Terraform will then:
-    1- Read your files to get the desired state.
-    2- Read the state file (terraform.tfstate), which is Terraform's record of what it created earlier.
-    3- Ask the Databricks API what actually exists (a refresh).
-    4- Diff desired against actual, and show the result in terraform plan: + create, ~ change, - destroy.
-
-Inspect the planned changes before applying with 
-```bash
-terraform apply
+terraform destroy
 ```
 
-After your changes have been applied, your Catalog Explorer should like similar to 
+Note: `force_destroy = false` on schemas means Terraform will refuse to delete a schema that still contains tables — empty it first (or drop the tables via the Bundle/pipeline UI) if you need a clean teardown.
 
-![Catalog Explorer](docs/catalog_explorer.png)
+## State management
+
+Terraform state (`terraform.tfstate`, `terraform.tfstate.backup`) is stored **locally only** and is git-ignored — it can contain sensitive values and this project has no remote state backend.
